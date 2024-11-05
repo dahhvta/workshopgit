@@ -1,7 +1,4 @@
-# workshopgit
-Exploração dos comandos git
+# Trabalho TP1 Ambientes
+Enviar a parte de cada um.
 
-Teste
-Teste
-Teste
-
+Quem já enviou - (A102397 David Costa)
