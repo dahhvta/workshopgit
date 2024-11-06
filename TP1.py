@@ -26,22 +26,21 @@ def fetch_jobs(params):
         return None
     
 def top10_data():
-  URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
-  request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
-  data = request.json()
-  alldata={}
-  total_pages = math.ceil(data['total']/12)
-  for rep in range(total_pages):
-      datasets = requests.get(URL, params={'limit': 12, 'page':rep+1},headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
-      results = datasets['results']
-      if 'csv' in sys.argv:        
-        for item in results:
-          alldata[item['id']] = [item.get('title', ''),item['company'].get('name', ''), item['company'].get('description', ''),item.get('publishedAt', ''),item.get('wage', ''),item['company'].get('address', '')]
-      else: 
-        for item in results:
-          alldata[item['id']] = [item['company']['name'],item['publishedAt']]
-  return alldata
-
+    URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
+    request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
+    data = request.json()
+    alldata={}
+    total_pages = math.ceil(data['total']/12)
+    for rep in range(total_pages):
+        datasets = requests.get(URL, params={'limit': 12, 'page':rep+1},headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
+        results = datasets['results']
+        if 'csv' in sys.argv:        
+            for item in results:
+                alldata[item['id']] = [item.get('title', ''),item['company'].get('name', ''), item['company'].get('description', ''),item.get('publishedAt', ''),item.get('wage', ''),item['company'].get('address', '')]
+        else: 
+            for item in results:
+                alldata[item['id']] = [item['company']['name'],item['publishedAt']]
+    return alldata
 
 def search_data(company, location, num_jobs):
     print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
@@ -88,18 +87,7 @@ def search_data(company, location, num_jobs):
     else:
         print("Nenhum trabalho encontrado para os critérios especificados.")
         return None
-
-
-
-
-
-
-
-
-
-
-
-
+    
 def salary(jobID):
     URL = 'https://api.itjobs.pt/job/get.json'
     api_key = '9fa7ce317d6e85c90d92244adb9146c6'
@@ -158,55 +146,35 @@ def salary(jobID):
             print("Sem informação sobre o salário.\n" + ", ".join(contract_info))
         else:
             print("Sem informação sobre o trabalho selecionado.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            
 def skills_data():
-  not_found = 1
-  URL = 'https://api.itjobs.pt/job/list.json?api_key=2fd9dd6db7e14adbf04df55811af5d22'
-  request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
-  data = request.json()
-  alldata={}
-  total_pages = math.ceil(data['total']/12)
-  for rep in range(total_pages):
-      datasets = requests.get(URL, params={'limit': 12, 'page':rep+1},headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
-      results = datasets['results']
-      for item in results:
+    not_found = 1
+    URL = 'https://api.itjobs.pt/job/list.json?api_key=2fd9dd6db7e14adbf04df55811af5d22'
+    request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
+    data = request.json()
+    alldata={}
+    total_pages = math.ceil(data['total']/12)
+    for rep in range(total_pages):
+        datasets = requests.get(URL, params={'limit': 12, 'page':rep+1},headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
+        results = datasets['results']
+        for item in results:
             data_trabalho = dt.strptime(item['publishedAt'],'%Y-%m-%d %H:%M:%S')
             if data_trabalho > data_ini and data_trabalho < data_fim:
                 for query in queries:
                     palavra_chave = re.search(query,item['body'])
                     if palavra_chave:
-                      if csv_check == 0:
-                        alldata[item['id']] = [item['company']['name'],item['company']['url']]
+                        if csv_check == 0:
+                            alldata[item['id']] = [item['company']['name'],item['company']['url']]
                         not_found = 0
-                      else:
+                        else:
                         alldata[item['id']] = [item.get('title', ''),item['company'].get('name', ''), item['company'].get('description', ''),item.get('publishedAt', ''),item.get('wage', ''),item['company'].get('address', '')]
                         not_found = 0
             elif data_trabalho < data_ini:
                 not_found = 0
                 return alldata
-  if not_found == 1:
-      return False
-  return alldata
-  
+            if not_found == 1:
+        return False
+    return alldata
 
 
 
