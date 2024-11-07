@@ -16,19 +16,6 @@ app = typer.Typer()
 general_results = []
 cache_loaded = False
 
-def fetch_jobs(params):
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
-    response = requests.get(BASE_URL, params=params, headers=headers)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"Erro ao obter dados: {response.status_code} - {response.text}")
-        return None
-    
 @app.command()
 def getdata():
     """
@@ -57,7 +44,20 @@ def getdata():
     
     cache_loaded = True 
     return general_results
-    
+
+def vaga_json_format(item):
+    return {
+            'id': item['id'],
+            'job_title': item['title'],
+            'company': item['company']['name'],
+            'company_description': item['company']['description'],
+            'published_at': item['publishedAt'],
+            'salary': item.get('wage', 'N/A'),
+            'location': item['locations'][0]['name'] if item.get('locations') else 'N/A',
+        }
+            #'url': item.get('company', {}).get('url', 'N/A'),
+            #'employment_type': item.get('types', [{}])[0].get('name', 'N/A'),
+
 @app.command()
 def top(n: int):
     """
@@ -69,22 +69,44 @@ def top(n: int):
     """
     general_data = getdata()  # Obtém dados da API ou cache
 
-    data_top = {}
+    data_top = []
 
     # Exibe os dados das 'n' vagas mais recentes    
-    for item in general_data[0:n]:  
-        data_top[item['id']]={
-            'job_title': item['title'],
-            'company': item['company']['name'],
-            'company_description': item['company']['description'],
-            'published_at': item['publishedAt'],
-            'salary': item.get('wage', 'N/A'),
-            'location': item['locations'][0]['name'] if item.get('locations') else 'N/A',
-            #'url': item.get('company', {}).get('url', 'N/A'),
-            #'employment_type': item.get('types', [{}])[0].get('name', 'N/A'),
-        }
+    data_top = [vaga_json_format(item) for item in general_data[0:n]]
         
-    print(json.dumps(data_top,indent=4))
+    return print(json.dumps(data_top,indent=4))
+    
+@app.command()
+def search(company: str, location: str, num_jobs: int):
+    
+    print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
+    
+    general_data = getdata() # Obtém dados da API ou cache
+    
+    # Inicializa a lista de trabalhos encontrados
+    found_jobs = []
+    
+    for item in general_data:
+        # Acessa o nome da empresa e localidade
+        company_name = item['company']['name']
+        job_locations = [loc['name'] for loc in item.get('locations', [])]
+        
+        # Verifica se a vaga corresponde ao nome da empresa e se a localização está na lista
+        if company_name.lower() == company.lower() and any(location.lower() in loc.lower() for loc in job_locations):
+            found_jobs.append(vaga_json_format(item))
+            print(f"\nTrabalho encontrado: {item['title']} na empresa {company_name} na localidade {location}")
+        
+        # Se o número de vagas encontrado atingir o limite, saímos do loop
+        if len(found_jobs) >= num_jobs:
+            break
+    
+    # Verifica se encontrou trabalhos
+    if found_jobs:
+        return print(json.dumps(found_jobs,indent=4))
+    
+    else:
+        print("Nenhum trabalho encontrado para os critérios especificados.")
+        return None
 
 def search_data(company, location, num_jobs):
     print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
@@ -191,6 +213,8 @@ def salary(jobID):
         else:
             print("Sem informação sobre o trabalho selecionado.")
             
+            
+"""
 def skills_data():
     not_found = 1
     URL = 'https://api.itjobs.pt/job/list.json?api_key=2fd9dd6db7e14adbf04df55811af5d22'
@@ -219,20 +243,7 @@ def skills_data():
             if not_found == 1:
         return False
     return alldata
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+"""
 
 def top10_data():
     URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
@@ -268,7 +279,7 @@ def top10_data():
                 alldata[item['id']] = [item['company']['name'], item['publishedAt']]
     
     return alldata
-  
+
 def search_data(company, location, num_jobs):
     print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
     
