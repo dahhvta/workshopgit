@@ -2,10 +2,15 @@ import requests
 import json
 import re
 import math
-from datetime import datetime as dt
 import typer
 import csv 
 from bs4 import BeautifulSoup as bs
+from datetime import datetime
+current_time = datetime.now()  # Agora você pode usar diretamente datetime.now()
+
+
+
+
 
 # Constantes de Configuração
 API_KEY = "9fa7ce317d6e85c90d92244adb9146c6"
@@ -40,14 +45,14 @@ def top10():
         print("Nenhum trabalho encontrado.")
 
 def get_jobs(location, company, num_jobs):
-    # API URL com a chave de API fornecida
+    # URL da API com a chave de API fornecida
     URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
     
-    # Buscar dados da API
     try:
+        # Buscar dados da API
         request = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
         
-        # Verificar se o código de status da resposta não é 200 (OK)
+        # Verificar se o código de status da resposta é 200 (OK)
         if request.status_code != 200:
             print(f"Erro: Recebido código de status {request.status_code} da API")
             return
@@ -55,54 +60,36 @@ def get_jobs(location, company, num_jobs):
         # Analisar os dados JSON
         data = request.json()
         
-        # Imprimir os dados brutos para inspecionar sua estrutura
-        print("Dados de resposta da API:", json.dumps(data, indent=2, ensure_ascii=False))
-        
-        # A resposta da API tem a chave 'results' que contém os empregos
+        # Obter a lista de empregos da resposta
         jobs = data.get("results", [])
-        
-        # Verificar se 'results' contém uma lista de empregos
         if not isinstance(jobs, list):
-            print("Erro: Formato inesperado dos dados da API. Esperado uma lista de empregos.")
+            print("Erro: Formato inesperado dos dados da API.")
             return
         
     except Exception as e:
         print(f"Erro ao buscar dados da API: {e}")
         return
     
-    # Exibir detalhes sobre os empregos retornados
-    print("\nEmpregos encontrados:")
-    for job in jobs:
-        company_name = job.get("company", {}).get("name", "N/A")
-        job_title = job.get("title", "N/A")
-        job_types = [job_type.get("name", "N/A") for job_type in job.get("types", [])]
-        job_locations = [location_item.get("name", "N/A") for location_item in job.get("locations", [])]
-        
-        print(f"Cargo: {job_title}, Empresa: {company_name}, Tipos: {', '.join(job_types)}, Localizações: {', '.join(job_locations)}")
-    
-    # Filtrar os empregos com base no tipo de trabalho, localização e nome da empresa
+    # Filtrar os empregos com base na empresa e localização especificadas
     filtered_jobs = []
     for job in jobs:
-        company_name = job.get("company", {}).get("name", "").lower()
-        job_locations = [location_item.get("name", "").lower() for location_item in job.get("locations", [])]
+        # Obter o nome da empresa e as localizações do emprego
+        company_name = job.get("company", {}).get("name", "").strip().lower()
+        job_locations = [location_item.get("name", "").strip().lower() for location_item in job.get("locations", [])]
         
-        # Debug: Mostrar as informações de cada trabalho antes da filtragem
-        print(f"\nVerificando trabalho: {job.get('title', 'N/A')}")
-        print(f"Empresa: {company_name}, Localizações: {job_locations}")
-        
-        # Verificar se a empresa e a localização são correspondentes (case insensitive) e permitir correspondência parcial
-        if (company.lower() in company_name) and any(location.lower() in location_item for location_item in job_locations):
+        # Verificar se o nome da empresa contém o termo especificado e se a localização corresponde
+        if company.lower() in company_name and any(location.lower() in loc for loc in job_locations):
             filtered_jobs.append(job)
     
     # Limitar o número de empregos ao valor especificado
     filtered_jobs = filtered_jobs[:num_jobs]
     
-    # Imprimir os empregos filtrados em formato JSON
+    # Retornar ou exibir os empregos filtrados
     if filtered_jobs:
-        print("\nEmpregos filtrados:")
         print(json.dumps(filtered_jobs, ensure_ascii=False, indent=2))
     else:
         print("Nenhum trabalho encontrado para os critérios especificados.")
+
 
 # Função para obter o salário de um emprego específico
 def salary(jobID):
@@ -154,7 +141,7 @@ def skills_data(skills, data_ini, data_fim):
         results = datasets['results']
         
         for item in results:
-            data_trabalho = dt.strptime(item['publishedAt'], '%Y-%m-%d %H:%M:%S')
+            data_trabalho = datetime.strptime(item['publishedAt'], '%Y-%m-%d %H:%M:%S')
             
             if data_ini <= data_trabalho <= data_fim:
                 if all(re.search(r'\b' + re.escape(skill) + r'\b', item['body'], re.IGNORECASE) for skill in skills):
@@ -173,8 +160,8 @@ def skills_data(skills, data_ini, data_fim):
 
 # Função para exibir os trabalhos conforme as skills e período
 def buscar_trabalhos_por_skills(skills, data_inicial, data_final):
-    data_ini = dt.strptime(data_inicial, '%Y-%m-%d')
-    data_fim = dt.strptime(data_final, '%Y-%m-%d')
+    data_ini = datetime.strptime(data_inicial, '%Y-%m-%d')
+    data_fim = datetime.strptime(data_final, '%Y-%m-%d')
     resultados = skills_data(skills, data_ini, data_fim)
     
     if resultados:
@@ -182,12 +169,27 @@ def buscar_trabalhos_por_skills(skills, data_inicial, data_final):
     else:
         return "Nenhum trabalho encontrado para as habilidades e período fornecidos."
 
+
+
+
+
+
+
+
+
+
 # Exemplo de execução
 if __name__ == "__main__":
     top10()
-    get_jobs("Lisboa", "CodeWin", 5)
+    get_jobs("Lisboa", "Noesis Portugal", 5)
     print(salary(490686))  # Substitua pelo ID de trabalho real
     print(buscar_trabalhos_por_skills(["Python", "Django"], "2024-10-01", "2024-10-31"))
+
+
+
+
+
+
 
 
 def top10(export_csv=False):
@@ -226,82 +228,40 @@ def top10(export_csv=False):
     else:
         print("Nenhum trabalho encontrado.")
 
-# Função para exportar uma lista de trabalhos para CSV
-def export_to_csv(jobs, filename="jobs.csv"):
-    fieldnames = ['titulo', 'empresa', 'descricao', 'data_publicacao', 'salario', 'localizacao']
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        for job in jobs:
-            job_data = {
-                'titulo': job.get('title', 'N/A'),
-                'empresa': job.get('company', {}).get('name', 'N/A'),
-                'descricao': job.get('body', 'N/A'),
-                'data_publicacao': job.get('published', 'N/A'),
-                'salario': job.get('wage', 'N/A'),
-                'localizacao': ', '.join([location.get('name', 'N/A') for location in job.get('locations', [])])
-            }
-            writer.writerow(job_data)
-    print(f"Dados exportados para {filename}")
+# Função unificada para exportar uma lista de trabalhos para CSV
+import csv
 
-# Função para buscar trabalhos com filtros de localização e empresa, com opção de exportar para CSV
 def export_to_csv(jobs, filename="jobs.csv"):
+    # Definindo os campos a serem incluídos no arquivo CSV
+    fieldnames = ['titulo', 'empresa', 'localizacao', 'tipo', 'descricao', 'data_publicacao', 'salario']
+    
     try:
-        with open(filename, mode="w", newline="") as file:
-            fields = ["title", "company", "location", "type", "description"]
-            writer = csv.DictWriter(file, fieldnames=fields)
+        with open(filename, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
-
+            
+            # Escrevendo os dados de cada trabalho no arquivo CSV
             for job in jobs:
-                writer.writerow({
-                    "title": job.get("title", "N/A"),
-                    "company": job.get("company", {}).get("name", "N/A"),
-                    "location": ", ".join([loc.get("name", "N/A") for loc in job.get("locations", [])]),
-                    "type": job.get("type", "N/A"),
-                    "description": job.get("description", "N/A"),
-                })
-        print(f"Dados exportados para {filename}")
+                job_data = {
+                    'titulo': job.get('title', 'N/A'),
+                    'empresa': job.get('company', {}).get('name', 'N/A'),
+                    'localizacao': ', '.join([location.get('name', 'N/A') for location in job.get('locations', [])]),
+                    'tipo': job.get('type', 'N/A'),
+                    'descricao': job.get('body', 'N/A'),
+                    'data_publicacao': job.get('published', 'N/A'),
+                    'salario': job.get('wage', 'N/A')
+                }
+                writer.writerow(job_data)
+        
+        print(f"Dados exportados com sucesso para {filename}")
     except Exception as e:
         print(f"Erro ao exportar para CSV: {e}")
 
-# Função para buscar os trabalhos com base nos filtros fornecidos
-def get_jobs(location, company, num_jobs, job_type=None, save_to_csv=False):
-    URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
 
-    try:
-        request = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0'})
-        if request.status_code != 200:
-            print(f"Erro: Recebido código de status {request.status_code} da API")
-            return
-        
-        data = request.json()
-        jobs = data.get("results", [])
-        
-        if not isinstance(jobs, list):
-            print("Erro: Formato inesperado dos dados da API.")
-            return
 
-        # Filtrando os trabalhos com base em localização, empresa e tipo de trabalho (full-time ou outro)
-        filtered_jobs = [
-            job for job in jobs
-            if company.lower() in job.get("company", {}).get("name", "").lower()
-            and any(location.lower() in loc.get("name", "").lower() for loc in job.get("locations", []))
-            and (job_type is None or job.get("type", "").lower() == job_type.lower())  # Filtro de tipo de trabalho (ex: "full-time")
-        ][:num_jobs]
+def get_jobs(location, company, num_jobs, job_type, export_csv=False):
+    # Corpo da função
 
-        if filtered_jobs:
-            for job in filtered_jobs:
-                print(f"Título: {job.get('title', 'N/A')}, Empresa: {job.get('company', {}).get('name', 'N/A')}")
-            
-            if save_to_csv:
-                export_to_csv(filtered_jobs)
-        else:
-            print("Nenhum trabalho encontrado para os critérios especificados.")
-    
-    except Exception as e:
-        print(f"Erro ao buscar dados da API: {e}")
-
-def get_jobs(location, company, num_jobs, export_csv=False):
     # URL da API com a chave de API fornecida
     URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
     
@@ -372,6 +332,57 @@ def get_jobs(location, company, num_jobs, export_csv=False):
         except Exception as e:
             print(f"Erro ao exportar dados para CSV: {e}")
 
+def skills_data(skills, data_ini, data_fim, export_csv=False, filename="skills_jobs.csv"):
+    not_found = True
+    URL = f'{BASE_URL}?api_key={API_KEY}'
+    request = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0'})
+    data = request.json()
+    
+    alldata = []
+    total_pages = math.ceil(data['total'] / 12) if data['total'] > 0 else 1
+    
+    for rep in range(total_pages):
+        datasets = requests.get(URL, params={'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0'}).json()
+        results = datasets['results']
+        
+        for item in results:
+            data_trabalho = dt.strptime(item['publishedAt'], '%Y-%m-%d %H:%M:%S')
+            
+            if data_ini <= data_trabalho <= data_fim:
+                if all(re.search(r'\b' + re.escape(skill) + r'\b', item['body'], re.IGNORECASE) for skill in skills):
+                    trabalho_info = {
+                        'titulo': item.get('title', ''),
+                        'empresa': item['company'].get('name', ''),
+                        'descricao': item.get('body', ''),
+                        'data_publicacao': item.get('publishedAt', ''),
+                        'salario': item.get('wage', ''),
+                        'localizacao': ', '.join([loc.get('name', 'N/A') for loc in item.get('locations', [])])
+                    }
+                    alldata.append(trabalho_info)
+                    not_found = False
+
+    # Exporta para CSV se solicitado
+    if export_csv and alldata:
+        with open(filename, mode='w', newline='', encoding='utf-8') as file:
+            fieldnames = ['titulo', 'empresa', 'descricao', 'data_publicacao', 'salario', 'localizacao']
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(alldata)
+        print(f"Dados exportados para {filename}")
+
+    return alldata
+
+# Função para exibir ou exportar resultados conforme as skills e o período fornecido
+def buscar_trabalhos_por_skills(skills, data_inicial, data_final, export_csv=False):
+    data_ini = dt.strptime(data_inicial, '%Y-%m-%d')
+    data_fim = dt.strptime(data_final, '%Y-%m-%d')
+    resultados = skills_data(skills, data_ini, data_fim, export_csv=export_csv)
+    
+    if resultados:
+        return json.dumps(resultados, indent=4)
+    else:
+        return "Nenhum trabalho encontrado para as habilidades e período fornecidos."  
+
 # Função para buscar trabalhos por habilidades e período, com opção de exportar para CSV
 # Função principal para escolher a funcionalidade
 def main():
@@ -388,16 +399,19 @@ def main():
         top10(export_csv=export)
     elif choice == "2":
         location = input("Digite a localização: ")
-        company = input("Digite o nome da empresa: ")
-        num_jobs = int(input("Quantos trabalhos deseja listar? "))
-        job_type = input("Digite o tipo de trabalho (ex: full-time) ou deixe em branco para todos: ").strip()
-        
-        export = input("Deseja exportar para CSV? (s/n): ").lower() == 's'
+        company = input("Digite o nome da empresa (opcional): ")
+        num_jobs = int(input("Digite o número de trabalhos: "))
+        job_type = input("Digite o tipo de trabalho: ")
+        export = input("Deseja exportar para CSV? (s/n): ").strip().lower() == 's'
 
         if not job_type:
             job_type = None
         
-        get_jobs(location, company, num_jobs, job_type, save_to_csv=export)
+        # Chamando a função `get_jobs` com a assinatura correta
+        # Chamando a função get_jobs sem o argumento job_type
+        get_jobs(location, company, num_jobs, job_type=job_type, export_csv=export)
+
+
 
     elif choice == "3":
         skills = input("Digite as habilidades separadas por vírgula: ").split(',')
