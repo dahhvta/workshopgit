@@ -26,13 +26,12 @@ def getdata():
     
     Usa cache para evitar chamadas repetidas à API enquanto o programa estiver em execução.
     """
-    global general_results, cache_loaded
+    global API_KEY, BASE_URL, general_results, cache_loaded
     
-    # Verifica se já existem dados carregados
-    if cache_loaded:
+    if cache_loaded: # Verifica se já existem dados carregados
         return general_results
 
-    URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
+    URL = f'{BASE_URL}?api_key={API_KEY}'
     print("Pedindo informações à API, pode demorar um tempo...")
     
     request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
@@ -68,11 +67,7 @@ def top(n: int):
     são os mais recentes.
     """
     general_data = getdata()  # Obtém dados da API ou cache
-
-    data_top = []
-
-    # Exibe os dados das 'n' vagas mais recentes    
-    data_top = [vaga_json_format(item) for item in general_data[0:n]]
+    data_top = [vaga_json_format(item) for item in general_data[0:n]] # Exibe os dados das 'n' vagas mais recentes 
         
     return print(json.dumps(data_top,indent=4))
     
@@ -83,11 +78,9 @@ def search(company: str, location: str, num_jobs: int):
     
     general_data = getdata() # Obtém dados da API ou cache
     
-    # Inicializa a lista de trabalhos encontrados
-    found_jobs = []
+    found_jobs = [] # Inicializa/ reseta a lista de trabalhos encontrados
     
     for item in general_data:
-        # Acessa o nome da empresa e localidade
         company_name = item['company']['name']
         job_locations = [loc['name'] for loc in item.get('locations', [])]
         
@@ -99,251 +92,34 @@ def search(company: str, location: str, num_jobs: int):
         # Se o número de vagas encontrado atingir o limite, saímos do loop
         if len(found_jobs) >= num_jobs:
             break
-    
-    # Verifica se encontrou trabalhos
+        
     if found_jobs:
         return print(json.dumps(found_jobs,indent=4))
     
     else:
-        print("Nenhum trabalho encontrado para os critérios especificados.")
-        return None
+        return print("Nenhum trabalho encontrado para os critérios especificados.")
 
-def search_data(company, location, num_jobs):
-    print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
-    
-    # URL base da API
-    URL = 'https://api.itjobs.pt/job/list.json'
-    API_KEY = '9fa7ce317d6e85c90d92244adb9146c6'  # Substitua pela sua chave de API
+@app.command()
+def salary(job_id: int):
+    # Id com wage != null para testar
+    # 491881, 491763, 491690, 491671, 491626, 490686, 491483, 491458
 
-    # Inicializa a lista de trabalhos encontrados
-    found_jobs = []
-    
-    # Faz a primeira requisição para saber o total de trabalhos
-    response = requests.get(URL, params={'api_key': API_KEY, 'limit': 12, 'page': 1}, headers={'User-Agent': 'Mozilla/5.0'})
-    data = response.json()
-    
-    if 'total' in data and data['total'] > 0:
-        total_pages = math.ceil(data['total'] / 12)
-        for rep in range(total_pages):
-            # Requisição para cada página
-            datasets = requests.get(URL, params={'api_key': API_KEY, 'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0'}).json()
-            results = datasets.get('results', [])
+    """
+    Função para extrair e exibir o salário de uma vaga a partir de seu job_id.
+    Caso o salário não esteja disponível, achar com expressoes regulares.
+    """
+    general_data = getdata()  # Obtém dados da API ou cache
+
+    for item in general_data:
+        if item['id'] == job_id:
+            salary = item.get('wage', 'Salário não informado')  # IMPLEMENTAR EXPRESSOES REGULARES!
+            locations = (', '.join([location['name'] for location in item.get('locations', [])]))
+            return print(f"Id: {job_id} - {item['title']}, {item['company']['name']} ({locations}): {salary}")
             
-            for item in results:
-                # Acessa o nome da empresa e localidade
-                company_name = item['company']['name']
-                job_locations = [loc['name'] for loc in item.get('locations', [])]
-                
-                # Filtra pelos critérios
-                if (company_name == company) and (location in job_locations):
-                    found_jobs.append(item)
-                    print(f"Trabalho encontrado: {item['title']} na empresa {company_name} na localidade {location}")
-                
-                # Limita a quantidade de trabalhos encontrados
-                if len(found_jobs) >= num_jobs:
-                    break
-            
-            # Para o loop se já encontrou o número de trabalhos desejado
-            if len(found_jobs) >= num_jobs:
-                break
+    print(f"Vaga com o id {job_id} não encontrada.") # Caso não encontre a vaga com o job_id
 
-    # Verifica se encontrou trabalhos
-    if found_jobs:
-        return found_jobs
-    else:
-        print("Nenhum trabalho encontrado para os critérios especificados.")
-        return None
-    
-def salary(jobID):
-    URL = 'https://api.itjobs.pt/job/get.json'
-    api_key = '9fa7ce317d6e85c90d92244adb9146c6'
-    
-    try:
-        # Realiza a requisição para obter informações sobre o trabalho
-        response = requests.get(URL, params={'api_key': api_key, 'id': jobID}, 
-                                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
-        
-        # Verifica o código de status da resposta
-        if response.status_code != 200:
-            print(f"Erro: Status HTTP {response.status_code}. Verifique a chave da API e o jobID.")
-            return
-        
-        # Tenta carregar o conteúdo JSON da resposta
-        data = response.json()
-        
-    except requests.JSONDecodeError:
-        print("Erro: A resposta não está em formato JSON. Verifique a URL e os parâmetros.")
-        return
 
-    # Verifica se a resposta contém o campo 'error' indicando que o jobID não foi encontrado
-    if 'error' in data:
-        print(f"Erro: {data['error'].get('message', 'Erro desconhecido')}")
-        return
-
-    # Tenta extrair o salário do campo 'wage' se presente
-    wage = data.get('wage')
-    if wage is not None:
-        print(f"Apresenta um salário inicial de {wage}€.")
-        return
-    
-    # Caso 'wage' esteja ausente, tenta encontrar o salário em campos alternativos usando expressões regulares
-    salary_found = False
-    fields_to_check = ['description', 'salary_info', 'benefits']
-    
-    for field in fields_to_check:
-        if field in data and isinstance(data[field], str):  # Verifica se o campo é uma string
-            match = re.search(r'(\d+(\.\d{1,2})?)\s*(€|USD|BRL|GBP)', data[field])
-            if match:
-                print(f"Salário encontrado no campo {field}: {match.group(0)}")
-                salary_found = True
-                break
-    
-    # Se não encontrou o salário em nenhum dos campos alternativos
-    if not salary_found:
-        # Tenta fornecer informações adicionais sobre o contrato
-        contract_info = []
-        if 'contracts' in data and isinstance(data['contracts'], list) and data['contracts']:
-            contract_info.append(f"Contrato: {data['contracts'][0].get('name', 'Desconhecido')}")
-        if 'types' in data and isinstance(data['types'], list) and data['types']:
-            contract_info.append(f"Tipo: {data['types'][0].get('name', 'Desconhecido')}")
-        
-        # Se houver informações de contrato ou tipo, exibe-as; caso contrário, informa que não há dados disponíveis
-        if contract_info:
-            print("Sem informação sobre o salário.\n" + ", ".join(contract_info))
-        else:
-            print("Sem informação sobre o trabalho selecionado.")
-            
-            
-"""
-def skills_data():
-    not_found = 1
-    URL = 'https://api.itjobs.pt/job/list.json?api_key=2fd9dd6db7e14adbf04df55811af5d22'
-    request = requests.get(URL,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
-    data = request.json()
-    alldata={}
-    total_pages = math.ceil(data['total']/12)
-    for rep in range(total_pages):
-        datasets = requests.get(URL, params={'limit': 12, 'page':rep+1},headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
-        results = datasets['results']
-        for item in results:
-            data_trabalho = dt.strptime(item['publishedAt'],'%Y-%m-%d %H:%M:%S')
-            if data_trabalho > data_ini and data_trabalho < data_fim:
-                for query in queries:
-                    palavra_chave = re.search(query,item['body'])
-                    if palavra_chave:
-                        if csv_check == 0:
-                            alldata[item['id']] = [item['company']['name'],item['company']['url']]
-                        not_found = 0
-                        else:
-                        alldata[item['id']] = [item.get('title', ''),item['company'].get('name', ''), item['company'].get('description', ''),item.get('publishedAt', ''),item.get('wage', ''),item['company'].get('address', '')]
-                        not_found = 0
-            elif data_trabalho < data_ini:
-                not_found = 0
-                return alldata
-            if not_found == 1:
-        return False
-    return alldata
-"""
-
-def top10_data():
-    URL = 'https://api.itjobs.pt/job/list.json?api_key=9fa7ce317d6e85c90d92244adb9146c6'
-    request = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'})
-    data = request.json()
-    alldata = {}
-    
-    total_pages = math.ceil(data['total'] / 12)
-    for rep in range(total_pages):
-        datasets = requests.get(URL, params={'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0'}).json()
-        results = datasets['results']
-        
-        if 'csv' in sys.argv:        
-            for item in results:
-                alldata[item['id']] = [
-                    item.get('title', ''),
-                    item['company'].get('name', ''),
-                    item['company'].get('description', ''),
-                    item.get('publishedAt', ''),
-                    item.get('wage', ''),
-                    item['company'].get('address', '')
-                ]
-            
-            # Exportar para CSV
-            with open('job_list.csv', mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                writer.writerow(['ID', 'Title', 'Company', 'Description', 'Published At', 'Salary', 'Location'])
-                for key, value in alldata.items():
-                    writer.writerow([key] + value)
-
-        else: 
-            for item in results:
-                alldata[item['id']] = [item['company']['name'], item['publishedAt']]
-    
-    return alldata
-
-def search_data(company, location, num_jobs):
-    print(f"Procurando trabalhos para Empresa: {company}, Localidade: {location}, Número de Trabalhos: {num_jobs}")
-    
-    # URL base da API
-    URL = 'https://api.itjobs.pt/job/list.json'
-    API_KEY = '9fa7ce317d6e85c90d92244adb9146c6'  # Substitua pela sua chave de API
-
-    # Inicializa a lista de trabalhos encontrados
-    found_jobs = []
-    
-    # Faz a primeira requisição para saber o total de trabalhos
-    response = requests.get(URL, params={'api_key': API_KEY, 'limit': 12, 'page': 1}, headers={'User-Agent': 'Mozilla/5.0'})
-    data = response.json()
-    
-    if 'total' in data and data['total'] > 0:
-        total_pages = math.ceil(data['total'] / 12)
-        for rep in range(total_pages):
-            # Requisição para cada página
-            datasets = requests.get(URL, params={'api_key': API_KEY, 'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0'}).json()
-            results = datasets.get('results', [])
-            
-            for item in results:
-                # Acessa o nome da empresa e localidade
-                company_name = item['company']['name']
-                job_locations = [loc['name'] for loc in item.get('locations', [])]
-                
-                # Filtra pelos critérios
-                if (company_name == company) and (location in job_locations):
-                    found_jobs.append(item)
-                    print(f"Trabalho encontrado: {item['title']} na empresa {company_name} na localidade {location}")
-                
-                # Limita a quantidade de trabalhos encontrados
-                if len(found_jobs) >= num_jobs:
-                    break
-            
-            # Para o loop se já encontrou o número de trabalhos desejado
-            if len(found_jobs) >= num_jobs:
-                break
-
-    # Verifica se encontrou trabalhos
-    if found_jobs:
-        # Verifica se o argumento 'csv' está presente para exportar os dados para um arquivo CSV
-        if 'csv' in sys.argv:
-            # Exportar para CSV
-            with open('found_jobs.csv', mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                writer.writerow(['Title', 'Company', 'Description', 'Published At', 'Salary', 'Location'])
-                for item in found_jobs:
-                    title = item.get('title', '')
-                    company_name = item['company'].get('name', '')
-                    description = item['company'].get('description', '')
-                    published_at = item.get('publishedAt', '')
-                    wage = item.get('wage', '')
-                    locations = ', '.join([loc['name'] for loc in item.get('locations', [])])
-                    
-                    writer.writerow([title, company_name, description, published_at, wage, locations])
-            print(f"{len(found_jobs)} trabalhos exportados para 'found_jobs.csv'.")
-        return found_jobs
-    else:
-        print("Nenhum trabalho encontrado para os critérios especificados.")
-        return None
-    
-
-def salary(jobID):
+""" def salary(jobID):
     URL = 'https://api.itjobs.pt/job/get.json'
     api_key = '9fa7ce317d6e85c90d92244adb9146c6'
     
@@ -410,8 +186,8 @@ def salary(jobID):
             writer.writerow([title, company_name, description, published_at, wage if wage else 'Não disponível', locations])
         
         print(f"Informações exportadas para o arquivo {jobID}_job_salary.csv.")
-
-def skills_data(queries, data_ini, data_fim, csv_check=0):
+"""
+"""def skills_data(queries, data_ini, data_fim, csv_check=0):
     not_found = 1
     URL = 'https://api.itjobs.pt/job/list.json?api_key=2fd9dd6db7e14adbf04df55811af5d22'
     
@@ -474,6 +250,6 @@ def skills_data(queries, data_ini, data_fim, csv_check=0):
         print(f"Informações exportadas para o arquivo skills_data.csv.")
 
     return alldata
-
+"""
 if __name__ == "__main__":
     app()
