@@ -6,6 +6,7 @@ import json
 import os
 import typer
 import csv
+from time import sleep
 
 app = typer.Typer()
 
@@ -42,7 +43,7 @@ def load_cache():
         with open(CACHE_FILE, 'r', encoding='utf-8') as file:
             return json.load(file)
     else:
-        print("Arquivo de cache não encontrado.")
+        typer.echo(typer.style("Arquivo de cache não encontrado.", fg=typer.colors.RED))
         return(getdata(force_reload=True))
 
 def fetch_from_api():
@@ -57,23 +58,26 @@ def fetch_from_api():
         total_vagas = response_data.get('total', 0)
         
         if total_vagas == 0:
-            print("Nenhuma vaga encontrada.")
+            typer.echo(typer.style("Nenhuma vaga encontrada.", fg=typer.colors.RED))  # Exibe em vermelho
             return []
 
         # Calcula o número total de páginas
         total_pages = math.ceil(total_vagas / 12)
         all_jobs = []
         
-        for rep in range(total_pages):
-            print(f"Carregando página {rep + 1} de {total_pages}...")
-            datasets = requests.get(URL, params={'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0'}).json()
-            all_jobs.extend(datasets.get('results', []))
+        # Barra de progresso para carregar todas as páginas
+        with typer.progressbar(range(total_pages), label="Carregando páginas") as progress:
+            for rep in progress:
+                # Carrega cada página de resultados
+                datasets = requests.get(URL, params={'limit': 12, 'page': rep + 1}, headers={'User-Agent': 'Mozilla/5.0'}).json()
+                all_jobs.extend(datasets.get('results', []))
         
         """Salva os dados de vagas no cache"""
         with open(CACHE_FILE, 'w', encoding='utf-8') as file:
             json.dump(all_jobs, file, ensure_ascii=False, indent=4)
-        print("Cache salvo no ficheiro 'cache_vagas.json'.")
-    
+        typer.echo(typer.style(f"Cache salvo no arquivo '{CACHE_FILE}'.", fg=typer.colors.GREEN))  # Exibe em verde
+        sleep(5)
+        
         return all_jobs
     
     except requests.RequestException as e:
@@ -129,7 +133,7 @@ def top(n: int, save: bool = False):
     print(json.dumps(found_jobs,indent=4))  # Altera para formato JSON as vagas encontradas e exibe os resultados
     
     if save:
-        print(f"Resultados salvos em 'top_vagas.csv'")
+        typer.echo(typer.style(f"Resultados salvos em 'top_vagas.csv'", fg=typer.colors.GREEN))
 
 @app.command()
 def search(company: str, location: str, num_jobs: int, save: bool = False):
@@ -166,7 +170,7 @@ def search(company: str, location: str, num_jobs: int, save: bool = False):
         print("Nenhum trabalho encontrado para os critérios especificados.")
     
     if save:
-        print(f"Resultados salvos em 'search_vagas.csv'")
+        typer.echo(typer.style(f"Resultados salvos em 'search_vagas.csv'", fg=typer.colors.GREEN))
 
 @app.command()
 def salary(job_id: int):
@@ -239,7 +243,7 @@ def skills(skills:str, data_ini:str, data_fim:str, save: bool = False):
         print("Nenhuma vaga encontrada para os critérios informados.")
     
     if save:
-        print(f"Resultados salvos em 'skills_vagas.csv'")
+        typer.echo(typer.style(f"Resultados salvos em 'skills_vagas.csv'", fg=typer.colors.GREEN))
 
 def criar_regex_sem_acentos(palavra):
     """
